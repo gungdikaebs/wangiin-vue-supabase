@@ -1,0 +1,66 @@
+/* Tailwind CSS v4 Core & Theme Config */
+@import "tailwindcss";
+
+@theme {
+  /* Aura & Essence Color Palette mapped to Tailwind utility values */
+  --color-brand-surface: #0f172a;
+  --color-brand-surface-dim: #0f172a;
+  --color-brand-surface-bright: #1e293b;
+  --color-brand-surface-lowest: #020617;
+  --color-brand-surface-low: #0b1120;
+  --color-brand-surface-container: #152033;
+  --color-brand-surface-high: #1e293b;
+  --color-brand-surface-highest: #334155;
+  --color-brand-on-surface: #e5e2e1;
+  --color-brand-on-surface-variant: #c4c7c8;
+  --color-brand-inverse-surface: #e5e2e1;
+  --color-brand-inverse-on-surface: #313030;
+  
+  --color-brand-outline: #8e9192;
+  --color-brand-outline-variant: #444748;
+  --color-brand-surface-tint: #c6c6c7;
+  
+  --color-brand-primary: #ffffff;
+  --color-brand-on-primary: #2f3131;
+  --color-brand-primary-container: #e2e2e2;
+  --color-brand-on-primary-container: #636565;
+  --color-brand-inverse-primary: #5d5f5f;
+  
+  /* Technical Accent Blue */
+  --color-brand-secondary: #a8c8ff;
+  --color-brand-on-secondary: #003061;
+  --color-brand-secondary-container: #3491ff;
+  --color-brand-on-secondary-container: #002955;
+  
+  --color-brand-tertiary: #ffffff;
+  --color-brand-on-tertiary: #2f3131;
+  --color-brand-tertiary-container: #e2e2e2;
+  --color-brand-on-tertiary-container: #636565;
+  
+  --color-brand-error: #ffb4ab;
+  --color-brand-on-error: #690005;
+  --color-brand-error-container: #93000a;
+  --color-brand-on-error-container: #ffdad6;
+  
+  --color-brand-background: #020617;
+  --color-brand-on-background: #e2e8f0;
+  --color-brand-deep-black: #01030a;
+  --color-brand-interface-gray: #919191;
+
+  /* Typographic Token Integrations */
+  --font-editorial: 'Cormorant Garamond', serif;
+  --font-display: 'Jost', sans-serif;
+  --font-body: 'Jost', sans-serif;
+  --font-mono: 'Montserrat', sans-serif;
+}
+
+/* Custom Base resets */
+@layer base {
+  body {
+    background-color: var(--color-brand-deep-black);
+    color: var(--color-brand-on-background);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
