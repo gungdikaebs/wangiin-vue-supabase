@@ -37,7 +37,7 @@ const formattedPrice = computed(() => {
         </span>
       </div>
       <div class="absolute top-6 right-6 z-20">
-        <span class="font-mono text-[9px] text-brand-interface-gray tracking-[0.2em]">{{ product.id }}</span>
+        <!-- UUID hidden -->
       </div>
       
       <!-- Structural Bottle Representation -->
@@ -51,7 +51,7 @@ const formattedPrice = computed(() => {
     <div class="pt-6 pb-2 flex flex-col flex-grow">
       <span class="font-mono text-[9px] text-brand-secondary tracking-[0.2em] mb-3">{{ product.type }}</span>
       <h3 class="font-display text-xl font-bold uppercase tracking-wide mb-2 group-hover:text-brand-secondary transition-colors duration-500">{{ product.name }}</h3>
-      <p class="font-mono text-[10px] text-brand-interface-gray mb-8 flex-grow tracking-[0.1em]">{{ product.notes }}</p>
+      <p class="font-mono text-[10px] text-brand-interface-gray mb-8 flex-grow tracking-[0.1em]">{{ product.subtitle || 'FRAGRANCE NOTES' }}</p>
       
       <div class="flex justify-between items-end mt-auto">
         <span class="font-body text-sm font-light tracking-widest">{{ formattedPrice }}</span>

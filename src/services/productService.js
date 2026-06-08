@@ -305,7 +305,7 @@ export const productService = {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, is_new, category:categories(name), variants:product_variants(size, price)')
+        .select('id, name, is_new, subtitle, category:categories(name), variants:product_variants(size, price)')
         .limit(4) // Just get 4 items for featured
       
       if (error) throw error
@@ -314,6 +314,7 @@ export const productService = {
         id: p.id,
         name: p.name,
         category: p.category?.name,
+        subtitle: p.subtitle,
         isNew: p.is_new,
         price_2ml: p.variants?.find(v => v.size === '2 ML')?.price || 0,
         price_5ml: p.variants?.find(v => v.size === '5 ML')?.price || 0,

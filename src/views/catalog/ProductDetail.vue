@@ -107,7 +107,7 @@ const addToCart = () => {
             </span>
           </div>
           <div class="absolute top-8 right-8 z-20">
-            <span class="font-mono text-xs text-brand-interface-gray tracking-[0.2em]">{{ productStore.currentProduct.id }}</span>
+            <!-- UUID hidden -->
           </div>
 
           <!-- Structural Bottle Representation -->
@@ -150,7 +150,7 @@ const addToCart = () => {
               </li>
               <li class="grid grid-cols-4 gap-4">
                 <span class="text-brand-interface-gray uppercase tracking-widest">Middle</span>
-                <span class="col-span-3 text-brand-on-surface-variant">{{ productStore.currentProduct.notes?.heart || '-' }}</span>
+                <span class="col-span-3 text-brand-on-surface-variant">{{ productStore.currentProduct.notes?.middle || '-' }}</span>
               </li>
               <li class="grid grid-cols-4 gap-4">
                 <span class="text-brand-interface-gray uppercase tracking-widest">Base</span>
