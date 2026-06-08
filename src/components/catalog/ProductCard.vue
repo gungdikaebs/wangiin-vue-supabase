@@ -40,8 +40,11 @@ const formattedPrice = computed(() => {
         <!-- UUID hidden -->
       </div>
       
-      <!-- Structural Bottle Representation -->
-      <div class="w-24 h-44 border border-brand-primary/20 bg-brand-surface relative group-hover:scale-105 transition-transform duration-[1.5s] ease-out z-0">
+      <!-- Actual Product Image -->
+      <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1.5s] ease-out z-0" />
+      
+      <!-- Structural Bottle Representation Fallback -->
+      <div v-else class="w-24 h-44 border border-brand-primary/20 bg-brand-surface relative group-hover:scale-105 transition-transform duration-[1.5s] ease-out z-0">
         <div class="absolute -top-6 left-1/2 -translate-x-1/2 w-8 h-6 border border-brand-primary/20 bg-brand-surface-bright"></div>
         <div class="absolute inset-0 bg-gradient-to-t from-brand-deep-black/60 to-transparent"></div>
       </div>

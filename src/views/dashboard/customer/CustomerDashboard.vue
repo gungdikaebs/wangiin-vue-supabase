@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth'
+import { orderService } from '../../../services/orderService'
 import { User, ShoppingBag, MapPin, LogOut, Package } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -14,11 +15,18 @@ const handleLogout = async () => {
   router.push('/login')
 }
 
-// Mock Data for Customer
-const myOrders = [
-  { id: 'WGN-1002', date: 'Hari ini', status: 'Diproses', total: 'Rp 1.250.000', items: 'Carbon Iris (5ml), Silicon Oud (10ml)' },
-  { id: 'WGN-0854', date: '12 Mei 2026', status: 'Selesai', total: 'Rp 450.000', items: 'Neon Bergamot (2ml), Synthetic Rose (2ml)' }
-]
+const myOrders = ref([])
+const loadingOrders = ref(true)
+
+import { onMounted } from 'vue'
+
+onMounted(async () => {
+  if (authStore.user) {
+    loadingOrders.value = true
+    myOrders.value = await orderService.getCustomerOrders(authStore.user.id)
+    loadingOrders.value = false
+  }
+})
 </script>
 
 <template>
@@ -79,7 +87,12 @@ const myOrders = [
       <div v-if="currentTab === 'orders'">
         <h2 class="font-mono text-sm tracking-widest uppercase text-brand-secondary mb-8 pb-4 border-b border-brand-primary/10">Riwayat Pesanan Anda</h2>
         
-        <div v-if="myOrders.length === 0" class="flex flex-col items-center justify-center py-20 border border-dashed border-brand-primary/20 bg-brand-surface-lowest/50">
+        <div v-if="loadingOrders" class="flex flex-col items-center justify-center py-20 border border-brand-primary/10 bg-brand-surface-lowest">
+          <div class="w-8 h-8 border-2 border-brand-primary/20 border-t-brand-secondary rounded-full animate-spin mb-4"></div>
+          <span class="font-mono text-[10px] tracking-widest uppercase text-brand-interface-gray">Memuat Pesanan...</span>
+        </div>
+
+        <div v-else-if="myOrders.length === 0" class="flex flex-col items-center justify-center py-20 border border-dashed border-brand-primary/20 bg-brand-surface-lowest/50">
           <Package class="w-10 h-10 text-brand-interface-gray mb-4" />
           <span class="font-mono text-xs tracking-widest uppercase text-brand-interface-gray mb-2">Belum Ada Pesanan</span>
           <router-link to="/collection" class="mt-4 font-mono text-[10px] tracking-widest uppercase text-brand-secondary border-b border-brand-secondary pb-1">Mulai Belanja</router-link>
@@ -93,7 +106,9 @@ const myOrders = [
                 <span class="inline-flex px-2 py-1 text-[9px] font-mono tracking-widest uppercase" 
                   :class="{
                     'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20': order.status === 'Diproses',
-                    'bg-brand-secondary/10 text-brand-secondary border border-brand-secondary/20': order.status === 'Selesai'
+                    'bg-blue-500/10 text-blue-500 border border-blue-500/20': order.status === 'Dikirim',
+                    'bg-brand-secondary/10 text-brand-secondary border border-brand-secondary/20': order.status === 'Selesai',
+                    'bg-brand-surface-lowest text-brand-interface-gray border border-brand-primary/20': order.status === 'Pending'
                   }">
                   {{ order.status }}
                 </span>

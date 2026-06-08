@@ -110,8 +110,11 @@ const addToCart = () => {
             <!-- UUID hidden -->
           </div>
 
-          <!-- Structural Bottle Representation -->
-          <div class="w-40 h-72 border border-brand-primary/30 bg-brand-surface relative z-10 shadow-[0_0_50px_rgba(168,200,255,0.05)]">
+          <!-- Actual Product Image -->
+          <img v-if="productStore.currentProduct.image_url" :src="productStore.currentProduct.image_url" :alt="productStore.currentProduct.name" class="absolute inset-0 w-full h-full object-cover z-10" />
+
+          <!-- Structural Bottle Representation Fallback -->
+          <div v-else class="w-40 h-72 border border-brand-primary/30 bg-brand-surface relative z-10 shadow-[0_0_50px_rgba(168,200,255,0.05)]">
             <div class="absolute -top-10 left-1/2 -translate-x-1/2 w-12 h-10 border border-brand-primary/30 bg-brand-surface-bright"></div>
             <div class="absolute inset-0 bg-gradient-to-t from-brand-deep-black/80 to-transparent"></div>
             <!-- Decorative Label -->

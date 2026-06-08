@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth'
 import { LayoutDashboard, Package, ShoppingCart, Users, LogOut, TrendingUp, Search, Menu, X } from 'lucide-vue-next'
 import ProductManagement from './ProductManagement.vue'
+import OrderManagement from './OrderManagement.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -183,11 +184,15 @@ const recentOrders = [
         <ProductManagement />
       </div>
 
+      <!-- Order Management Tab -->
+      <div v-else-if="currentTab === 'orders'" class="h-full">
+        <OrderManagement />
+      </div>
+
       <!-- Placeholders for other tabs -->
       <div v-else
         class="flex flex-col items-center justify-center h-[60vh] opacity-50 border border-dashed border-brand-primary/20">
-        <ShoppingCart v-if="currentTab === 'orders'" class="w-12 h-12 text-brand-interface-gray mb-4" />
-        <Users v-else class="w-12 h-12 text-brand-interface-gray mb-4" />
+        <Users class="w-12 h-12 text-brand-interface-gray mb-4" />
 
         <h3 class="font-display text-xl uppercase tracking-widest text-brand-interface-gray mb-2">Segera Hadir</h3>
         <p class="font-body text-sm text-brand-on-surface-variant text-center max-w-md">Modul manajemen ini sedang dalam

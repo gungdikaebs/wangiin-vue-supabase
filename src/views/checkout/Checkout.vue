@@ -3,8 +3,9 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { useCartStore } from '../../stores/cart'
-import { paymentService } from '../../services/paymentService'
-import { ChevronLeft, ArrowRight, ShieldCheck, Truck } from 'lucide-vue-next'
+import { useAuthStore } from '../../stores/auth'
+import { supabase } from '../../plugins/supabase'
+import { ChevronLeft, ArrowRight, Truck, MessageCircle } from 'lucide-vue-next'
 
 useHead({
   title: 'Checkout | Wangiin'
@@ -12,6 +13,7 @@ useHead({
 
 const router = useRouter()
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 
 // If cart is empty, redirect back
 if (cartStore.items.length === 0) {
@@ -47,34 +49,75 @@ const handleCheckout = async () => {
   isProcessing.value = true
   
   try {
-    // 1. Send order to "backend" to get snap token
-    const orderData = {
-      items: cartStore.items,
-      customer: form.value,
-      total: total.value
-    }
+    const orderNumber = `WGN-${Date.now()}`
     
-    const response = await paymentService.createTransaction(orderData)
-    
-    if (response.success) {
-      // 2. Trigger Midtrans Mock Popup
-      const result = await paymentService.simulateSnapPayment(response.token)
-      
-      if (result.status === 'success') {
-        // Clear cart and redirect to success
-        cartStore.clearCart()
-        router.push({
-          path: '/checkout/success',
-          query: { order_id: response.orderId }
-        })
-      } else {
-        // User closed popup
-        console.log('Payment popup closed')
+    // 1. Insert into orders table
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        customer_id: authStore.user ? authStore.user.id : null,
+        order_number: orderNumber,
+        status: 'pending',
+        total_amount: total.value,
+        shipping_cost: shippingCost,
+        full_name: form.value.fullName,
+        email: form.value.email,
+        phone: form.value.phone,
+        address: form.value.address,
+        city: form.value.city,
+        postal_code: form.value.postalCode,
+        payment_status: 'unpaid',
+        payment_method: 'manual_transfer'
+      })
+      .select()
+      .single()
+
+    if (orderError) throw orderError
+
+    // 2. Prepare and insert order items
+    // Since our cart only stores the string '5ml', we need to fetch the real variant UUID from the database.
+    const productIds = cartStore.items.map(i => i.productId)
+    const { data: variantsData, error: varErr } = await supabase
+      .from('product_variants')
+      .select('id, product_id, size')
+      .in('product_id', productIds)
+
+    if (varErr) throw varErr
+
+    const orderItems = cartStore.items.map(item => {
+      // cart size is usually '5ml', DB size is '5 ML'
+      const dbSize = item.size.replace('ml', ' ML').toUpperCase()
+      const variant = variantsData.find(v => v.product_id === item.productId && v.size === dbSize)
+
+      if (!variant) {
+        throw new Error(`Variant tidak ditemukan untuk produk ${item.name} ukuran ${item.size}`)
       }
-    }
+
+      return {
+        order_id: orderData.id,
+        product_id: item.productId,
+        variant_id: variant.id, 
+        quantity: item.quantity,
+        price_at_time: item.price
+      }
+    })
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems)
+
+    if (itemsError) throw itemsError
+
+    // 3. Clear cart and redirect to success
+    cartStore.clearCart()
+    router.push({
+      path: '/checkout/success',
+      query: { order_id: orderData.order_number }
+    })
+    
   } catch (err) {
     console.error('Checkout error:', err)
-    alert('Terjadi kesalahan saat memproses pembayaran.')
+    alert('Terjadi kesalahan saat memproses pesanan: ' + err.message)
   } finally {
     isProcessing.value = false
   }
@@ -148,14 +191,14 @@ const handleCheckout = async () => {
             <button type="submit" :disabled="isProcessing" class="w-full inline-flex items-center justify-center gap-3 font-body text-sm font-semibold uppercase tracking-wider h-16 bg-brand-primary text-brand-on-primary hover:bg-brand-secondary hover:text-brand-on-secondary transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mt-4">
               <span v-if="isProcessing">Memproses...</span>
               <template v-else>
-                Pilih Metode Pembayaran
+                Buat Pesanan & Transfer Manual
                 <ArrowRight class="w-4 h-4" />
               </template>
             </button>
             
             <div class="flex items-center justify-center gap-2 text-brand-interface-gray font-mono text-[9px] uppercase tracking-widest opacity-60">
-              <ShieldCheck class="w-3 h-3" />
-              Pembayaran Aman via Midtrans
+              <MessageCircle class="w-3 h-3" />
+              Konfirmasi via WhatsApp setelah checkout
             </div>
             
           </form>

@@ -11,6 +11,8 @@ const isSeeding = ref(false)
 const showModal = ref(false)
 const formLoading = ref(false)
 const categories = ref([])
+const selectedImage = ref(null)
+const imagePreview = ref(null)
 
 // Form State
 const isEditMode = ref(false)
@@ -20,6 +22,7 @@ const form = ref({
   subtitle: '',
   description: '',
   category_id: '',
+  image_url: '',
   top_notes: '',
   middle_notes: '',
   base_notes: '',
@@ -62,8 +65,11 @@ const handleSeed = async () => {
 const openModal = () => {
   isEditMode.value = false
   editingProductId.value = null
+  selectedImage.value = null
+  imagePreview.value = null
   form.value = {
     name: '', subtitle: '', description: '', category_id: categories.value[0]?.id || '',
+    image_url: '',
     top_notes: '', middle_notes: '', base_notes: '', is_new: false,
     price_2ml: 0, price_5ml: 0, price_10ml: 0,
     var_2ml_id: null, var_5ml_id: null, var_10ml_id: null
@@ -80,11 +86,15 @@ const openEditModal = (p) => {
   const v5 = p.variants?.find(v => v.size === '5 ML')
   const v10 = p.variants?.find(v => v.size === '10 ML')
 
+  selectedImage.value = null
+  imagePreview.value = p.image_url || null
+
   form.value = {
     name: p.name,
     subtitle: p.subtitle || '',
     description: p.description || '',
     category_id: cat ? cat.id : categories.value[0]?.id,
+    image_url: p.image_url || '',
     top_notes: p.notes?.top || '',
     middle_notes: p.notes?.middle || '',
     base_notes: p.notes?.base || '',
@@ -103,14 +113,43 @@ const closeModal = () => {
   showModal.value = false
 }
 
+const handleImageChange = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  selectedImage.value = file
+  imagePreview.value = URL.createObjectURL(file)
+}
+
 const saveProduct = async () => {
   formLoading.value = true
   try {
+    let finalImageUrl = form.value.image_url
+
+    // Jika ada gambar baru yang dipilih
+    if (selectedImage.value) {
+      const fileExt = selectedImage.value.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, selectedImage.value)
+
+      if (uploadError) throw uploadError
+
+      const { data: publicUrlData } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath)
+      
+      finalImageUrl = publicUrlData.publicUrl
+    }
+
     const slug = form.value.name.toLowerCase().replace(/ /g, '-')
     const productPayload = {
       name: form.value.name,
       slug: slug,
       category_id: form.value.category_id,
+      image_url: finalImageUrl,
       subtitle: form.value.subtitle,
       description: form.value.description,
       top_notes: form.value.top_notes,
@@ -163,13 +202,26 @@ const saveProduct = async () => {
   }
 }
 
-const deleteProduct = async (id) => {
+const deleteProduct = async (product) => {
   if (confirm('Yakin ingin menghapus produk ini?')) {
-    const { error } = await supabase.from('products').delete().eq('id', id)
-    if (error) {
-      alert('Gagal menghapus produk')
-    } else {
+    try {
+      // 1. Hapus gambar dari Storage jika ada
+      if (product.image_url) {
+        const urlParts = product.image_url.split('/products/')
+        if (urlParts.length > 1) {
+          const filePath = urlParts[1] // mendapatkan nama file, misal: 123456-abc.jpg
+          await supabase.storage.from('products').remove([filePath])
+        }
+      }
+
+      // 2. Hapus produk dari database
+      const { error } = await supabase.from('products').delete().eq('id', product.id)
+      if (error) throw error
+      
       fetchProducts()
+    } catch (err) {
+      alert('Gagal menghapus produk: ' + err.message)
+      console.error(err)
     }
   }
 }
@@ -223,8 +275,16 @@ const deleteProduct = async (id) => {
           </tr>
           <tr v-for="(product, index) in products" :key="product.id" class="border-b border-brand-primary/5 hover:bg-brand-surface-lowest transition-colors" :class="{'border-b-0': index === products.length - 1}">
             <td class="p-4">
-              <div class="font-display text-sm tracking-wider uppercase text-brand-primary">{{ product.name }}</div>
-              <div class="font-mono text-[9px] tracking-widest text-brand-interface-gray mt-1">{{ product.subtitle || 'No subtitle' }}</div>
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-brand-surface-lowest border border-brand-primary/10 flex-shrink-0 overflow-hidden relative flex items-center justify-center">
+                  <img v-if="product.image_url" :src="product.image_url" class="w-full h-full object-cover" />
+                  <Database v-else class="w-4 h-4 text-brand-interface-gray opacity-50" />
+                </div>
+                <div>
+                  <div class="font-display text-sm tracking-wider uppercase text-brand-primary">{{ product.name }}</div>
+                  <div class="font-mono text-[9px] tracking-widest text-brand-interface-gray mt-1">{{ product.subtitle || 'No subtitle' }}</div>
+                </div>
+              </div>
             </td>
             <td class="p-4">
               <span class="px-2 py-1 bg-brand-primary/5 text-brand-primary text-[9px] font-mono tracking-widest uppercase border border-brand-primary/10">
@@ -238,7 +298,7 @@ const deleteProduct = async (id) => {
             <td class="p-4 text-right">
               <div class="flex justify-end gap-2">
                 <button @click="openEditModal(product)" class="p-2 text-brand-interface-gray hover:text-brand-primary transition-colors"><Edit class="w-4 h-4" /></button>
-                <button @click="deleteProduct(product.id)" class="p-2 text-brand-interface-gray hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button>
+                <button @click="deleteProduct(product)" class="p-2 text-brand-interface-gray hover:text-red-400 transition-colors"><Trash2 class="w-4 h-4" /></button>
               </div>
             </td>
           </tr>
@@ -258,9 +318,20 @@ const deleteProduct = async (id) => {
         <div class="flex-grow overflow-y-auto p-6">
           <form @submit.prevent="saveProduct" class="flex flex-col gap-6">
             
-            <div>
-              <label class="font-mono text-[10px] tracking-widest text-brand-interface-gray uppercase mb-2 block">Nama Parfum</label>
-              <input required v-model="form.name" type="text" class="w-full bg-brand-deep-black border border-brand-primary/20 text-brand-on-surface font-body text-sm py-3 px-4 focus:outline-none focus:border-brand-secondary transition-colors" />
+            <div class="flex items-start gap-6">
+              <div class="w-24 h-24 bg-brand-surface-lowest border border-brand-primary/20 flex-shrink-0 flex items-center justify-center relative overflow-hidden group cursor-pointer">
+                <img v-if="imagePreview" :src="imagePreview" class="w-full h-full object-cover" />
+                <div v-else class="text-center">
+                  <Plus class="w-5 h-5 text-brand-interface-gray mx-auto mb-1 opacity-50" />
+                  <span class="font-mono text-[8px] tracking-widest text-brand-interface-gray uppercase">Foto</span>
+                </div>
+                <input type="file" accept="image/jpeg,image/png,image/webp" @change="handleImageChange" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+              </div>
+
+              <div class="flex-grow">
+                <label class="font-mono text-[10px] tracking-widest text-brand-interface-gray uppercase mb-2 block">Nama Parfum</label>
+                <input required v-model="form.name" type="text" class="w-full bg-brand-deep-black border border-brand-primary/20 text-brand-on-surface font-body text-sm py-3 px-4 focus:outline-none focus:border-brand-secondary transition-colors" />
+              </div>
             </div>
 
             <div>

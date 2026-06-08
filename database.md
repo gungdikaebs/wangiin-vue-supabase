@@ -84,3 +84,14 @@
 3. **Guest (Belum Login):**
    - Bisa membaca (SELECT) katalog produk.
    - Bisa membuat (INSERT) pesanan baru.
+
+---
+
+## Supabase Storage (Buckets)
+
+### 1. `products`
+**Fungsi:** Menyimpan gambar botol/parfum yang diunggah oleh admin melalui dashboard. URL publik dari gambar ini akan disimpan ke dalam kolom `image_url` pada tabel `public.products`.
+
+**Storage RLS Policies:**
+- **Public Access:** Mengizinkan siapa saja (Guest, Customer, Admin) untuk melihat/membaca (SELECT) gambar di bucket ini.
+- **Admin Management:** Mengizinkan operasi modifikasi (INSERT, UPDATE, DELETE) pada bucket `products` agar admin bisa mengunggah dan menghapus gambar parfum dari *dashboard*.
