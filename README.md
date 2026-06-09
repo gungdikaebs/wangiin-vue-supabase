@@ -4,6 +4,13 @@ Wangiin adalah platform e-commerce yang berfokus pada penjualan parfum *decant* 
 
 Setiap parfum dijual dalam beberapa ukuran decant eksklusif: **2 ML, 5 ML, dan 10 ML**.
 
+## 📸 Preview Tampilan
+
+Berikut adalah tampilan dari Landing Page **Wangiin**:
+
+![Landing Page Preview](https://i.imgur.com/5MeDQTi.png)
+
+
 ## 🚀 Tech Stack
 
 Aplikasi ini dibangun menggunakan teknologi web modern:

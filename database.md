@@ -95,3 +95,65 @@
 **Storage RLS Policies:**
 - **Public Access:** Mengizinkan siapa saja (Guest, Customer, Admin) untuk melihat/membaca (SELECT) gambar di bucket ini.
 - **Admin Management:** Mengizinkan operasi modifikasi (INSERT, UPDATE, DELETE) pada bucket `products` agar admin bisa mengunggah dan menghapus gambar parfum dari *dashboard*.
+
+---
+
+## SQL Scripts (Untuk Setup di Supabase)
+
+Jika Anda perlu membuat atau mereset tabel pesanan, Anda bisa menjalankan *query* SQL berikut di menu **SQL Editor** Supabase Anda:
+
+```sql
+-- 1. Create orders table
+CREATE TABLE public.orders (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    customer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    order_number TEXT UNIQUE NOT NULL,
+    status TEXT DEFAULT 'pending',
+    total_amount NUMERIC NOT NULL,
+    shipping_cost NUMERIC DEFAULT 25000,
+    full_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    address TEXT NOT NULL,
+    city TEXT NOT NULL,
+    postal_code TEXT NOT NULL,
+    payment_status TEXT DEFAULT 'unpaid',
+    payment_method TEXT DEFAULT 'manual_transfer',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 2. Create order_items table
+CREATE TABLE public.order_items (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
+    variant_id UUID REFERENCES public.product_variants(id) ON DELETE CASCADE NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    price_at_time NUMERIC NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 3. Set up Row Level Security (RLS) for orders and order_items
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+
+-- Policy untuk Admin (Akses penuh)
+CREATE POLICY "Admin can do all on orders" ON public.orders FOR ALL USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+CREATE POLICY "Admin can do all on order_items" ON public.order_items FOR ALL USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
+-- Policy untuk Customer (Hanya baca milik sendiri)
+CREATE POLICY "Customer can view own orders" ON public.orders FOR SELECT USING (
+  auth.uid() = customer_id
+);
+CREATE POLICY "Customer can view own order_items" ON public.order_items FOR SELECT USING (
+  order_id IN (SELECT id FROM public.orders WHERE customer_id = auth.uid())
+);
+
+-- Policy untuk Insert (Bisa dilakukan siapa saja, termasuk Guest)
+CREATE POLICY "Anyone can insert orders" ON public.orders FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can insert order_items" ON public.order_items FOR INSERT WITH CHECK (true);
+```
