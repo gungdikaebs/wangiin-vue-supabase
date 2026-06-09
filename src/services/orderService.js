@@ -144,5 +144,48 @@ export const orderService = {
       console.error('Error updating order status:', error)
       return false
     }
+  },
+
+  async getOrderDetails(orderId) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            quantity,
+            price_at_time,
+            product:products ( name ),
+            variant:product_variants ( size )
+          )
+        `)
+        .eq('id', orderId)
+        .single()
+
+      if (error) throw error
+      
+      // Formatting
+      data.formattedTotal = new Intl.NumberFormat('id-ID', {
+        style: 'currency', currency: 'IDR', minimumFractionDigits: 0
+      }).format(data.total_amount)
+      
+      data.formattedShipping = new Intl.NumberFormat('id-ID', {
+        style: 'currency', currency: 'IDR', minimumFractionDigits: 0
+      }).format(data.shipping_cost || 0)
+
+      const subtotal = data.total_amount - (data.shipping_cost || 0)
+      data.formattedSubtotal = new Intl.NumberFormat('id-ID', {
+        style: 'currency', currency: 'IDR', minimumFractionDigits: 0
+      }).format(subtotal)
+
+      data.formattedDate = new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      }).format(new Date(data.created_at))
+
+      return data
+    } catch (err) {
+      console.error('Error fetching order details:', err)
+      return null
+    }
   }
 }

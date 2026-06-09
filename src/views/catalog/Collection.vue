@@ -1,9 +1,11 @@
 <script setup>
-import { onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useHead } from '@unhead/vue'
 import { useProductStore } from '../../stores/product'
 import ProductCard from '../../components/catalog/ProductCard.vue'
-import { Search, ChevronLeft, ChevronRight, FilterX } from 'lucide-vue-next'
+import { Search, ChevronLeft, ChevronRight, FilterX, Filter } from 'lucide-vue-next'
+
+const showMobileFilters = ref(false)
 
 useHead({
   title: 'Koleksi | Wangiin',
@@ -13,6 +15,7 @@ const productStore = useProductStore()
 
 onMounted(() => {
   productStore.loadCategories()
+  productStore.loadBrands()
   productStore.fetchProducts()
 })
 
@@ -22,6 +25,8 @@ const handleSearch = (e) => {
 
 const clearFilters = () => {
   productStore.setCategory('All')
+  productStore.setBrand('All')
+  productStore.setClassification('All')
   productStore.setSearchQuery('')
 }
 </script>
@@ -39,10 +44,25 @@ const clearFilters = () => {
       <div class="h-[1px] w-32 bg-brand-primary/20 mt-8"></div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-1 lg:grid-cols-4 gap-12">
+    <div class="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-1 lg:grid-cols-4 lg:gap-12 gap-6">
       
+      <!-- Mobile Filter Toggle -->
+      <div class="lg:hidden col-span-1">
+        <button 
+          @click="showMobileFilters = !showMobileFilters" 
+          class="w-full flex items-center justify-center gap-2 border border-brand-primary/20 py-3 font-mono text-[10px] tracking-widest uppercase hover:bg-brand-primary/5 transition-colors"
+          :class="showMobileFilters ? 'bg-brand-primary/10 text-brand-primary' : 'text-brand-interface-gray hover:text-brand-primary'"
+        >
+          <Filter class="w-4 h-4" />
+          {{ showMobileFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter' }}
+        </button>
+      </div>
+
       <!-- Sidebar Filters -->
-      <aside class="lg:col-span-1 flex flex-col gap-10">
+      <aside 
+        class="lg:col-span-1 flex-col gap-10"
+        :class="showMobileFilters ? 'flex mb-8' : 'hidden lg:flex'"
+      >
         
         <!-- Search -->
         <div>
@@ -56,6 +76,38 @@ const clearFilters = () => {
               placeholder="Cari parfum..." 
               class="w-full bg-brand-surface-lowest border border-brand-primary/20 text-brand-on-surface font-body text-sm py-3 pl-12 pr-4 focus:outline-none focus:border-brand-secondary transition-colors"
             />
+          </div>
+        </div>
+
+        <!-- Brands -->
+        <div>
+          <h3 class="font-mono text-[10px] tracking-widest uppercase text-brand-interface-gray mb-4">Brand / Merek</h3>
+          <div class="flex flex-col gap-2">
+            <button 
+              v-for="brand in productStore.brands" 
+              :key="brand"
+              @click="productStore.setBrand(brand)"
+              class="text-left font-body text-sm py-2 px-4 border-l-2 transition-all duration-300 uppercase tracking-wider font-medium"
+              :class="productStore.currentBrand === brand ? 'border-brand-secondary text-brand-secondary bg-brand-secondary/5' : 'border-transparent text-brand-on-surface-variant hover:text-brand-primary hover:border-brand-primary/30'"
+            >
+              {{ brand === 'All' ? 'Semua Brand' : brand }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Classifications -->
+        <div>
+          <h3 class="font-mono text-[10px] tracking-widest uppercase text-brand-interface-gray mb-4">Klasifikasi Pasar</h3>
+          <div class="flex flex-col gap-2">
+            <button 
+              v-for="cls in productStore.classifications" 
+              :key="cls"
+              @click="productStore.setClassification(cls)"
+              class="text-left font-body text-sm py-2 px-4 border-l-2 transition-all duration-300 uppercase tracking-wider font-medium"
+              :class="productStore.currentClassification === cls ? 'border-brand-secondary text-brand-secondary bg-brand-secondary/5' : 'border-transparent text-brand-on-surface-variant hover:text-brand-primary hover:border-brand-primary/30'"
+            >
+              {{ cls === 'All' ? 'Semua Tipe' : cls }}
+            </button>
           </div>
         </div>
 
@@ -76,7 +128,7 @@ const clearFilters = () => {
         </div>
 
         <!-- Active Filters Status -->
-        <div v-if="productStore.currentCategory !== 'All' || productStore.searchQuery" class="pt-6 border-t border-brand-primary/10">
+        <div v-if="productStore.currentCategory !== 'All' || productStore.currentBrand !== 'All' || productStore.currentClassification !== 'All' || productStore.searchQuery" class="pt-6 border-t border-brand-primary/10">
           <button @click="clearFilters" class="inline-flex items-center gap-2 font-mono text-[10px] text-brand-interface-gray hover:text-red-400 transition-colors uppercase tracking-widest">
             <FilterX class="w-3 h-3" />
             Hapus Filter

@@ -30,9 +30,9 @@ import { Instagram, Twitter, Mail } from 'lucide-vue-next'
         <div>
           <h4 class="font-mono text-xs font-semibold tracking-[0.15em] uppercase text-brand-interface-gray mb-6">Eksplorasi</h4>
           <ul class="flex flex-col gap-4 font-body text-sm text-brand-on-surface">
-            <li><a href="#about" class="hover:text-brand-secondary transition-colors duration-200">Tentang Studio</a></li>
+            <li><a href="#about" class="hover:text-brand-secondary transition-colors duration-200">Tentang Kami</a></li>
             <li><a href="#collection" class="hover:text-brand-secondary transition-colors duration-200">Koleksi</a></li>
-            <li><a href="#testimonials" class="hover:text-brand-secondary transition-colors duration-200">Ulasan Klien</a></li>
+            <li><a href="#testimonials" class="hover:text-brand-secondary transition-colors duration-200">Ulasan Pelanggan</a></li>
             <li><a href="#faq" class="hover:text-brand-secondary transition-colors duration-200">FAQ</a></li>
           </ul>
         </div>

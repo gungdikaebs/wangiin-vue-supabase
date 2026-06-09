@@ -7,10 +7,14 @@ export const useProductStore = defineStore('product', {
     featuredProducts: [],
     currentProduct: null,
     categories: [],
+    brands: [],
+    classifications: ['All', 'Local', 'Designer', 'Niche', 'Timteng'],
     
     // Filters & Pagination
     searchQuery: '',
     currentCategory: 'All',
+    currentBrand: 'All',
+    currentClassification: 'All',
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
@@ -28,6 +32,8 @@ export const useProductStore = defineStore('product', {
       try {
         const response = await productService.getProducts({
           category: this.currentCategory,
+          brand: this.currentBrand,
+          classification: this.currentClassification,
           search: this.searchQuery,
           page: this.currentPage,
           limit: 6
@@ -73,10 +79,26 @@ export const useProductStore = defineStore('product', {
     async loadCategories() {
       this.categories = await productService.getCategories()
     },
+
+    async loadBrands() {
+      this.brands = await productService.getBrands()
+    },
     
     setCategory(category) {
       this.currentCategory = category
       this.currentPage = 1 // reset to first page when filtering
+      this.fetchProducts()
+    },
+
+    setBrand(brand) {
+      this.currentBrand = brand
+      this.currentPage = 1
+      this.fetchProducts()
+    },
+
+    setClassification(cls) {
+      this.currentClassification = cls
+      this.currentPage = 1
       this.fetchProducts()
     },
     

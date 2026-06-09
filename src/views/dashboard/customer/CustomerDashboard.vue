@@ -36,7 +36,7 @@ onMounted(async () => {
     <aside class="w-full md:w-64 flex-shrink-0">
       <div class="mb-10">
         <h1 class="font-display text-3xl uppercase tracking-widest text-brand-primary line-clamp-1">
-          Halo, {{ authStore.user?.user_metadata?.full_name?.split(' ')[0] || 'Klien' }}
+          Halo, {{ authStore.user?.user_metadata?.full_name?.split(' ')[0] || 'Pelanggan' }}
         </h1>
         <p class="font-mono text-[10px] tracking-widest text-brand-interface-gray uppercase mt-2">
           {{ authStore.user?.email }}

@@ -5,6 +5,7 @@ const mockProducts = [
     id: 'A-01',
     name: 'SILICON OUD',
     brand: 'Wangiin Signature',
+    classification: 'Niche',
     category: 'Woody',
     type: 'EAU DE PARFUM',
     price_2ml: 45000,
@@ -22,6 +23,7 @@ const mockProducts = [
     id: 'C-04',
     name: 'CARBON IRIS',
     brand: 'Wangiin Signature',
+    classification: 'Designer',
     category: 'Floral',
     type: 'EXTRAIT DE PARFUM',
     price_2ml: 65000,
@@ -39,6 +41,7 @@ const mockProducts = [
     id: 'N-09',
     name: 'NEON BERGAMOT',
     brand: 'Wangiin Signature',
+    classification: 'Local',
     category: 'Fresh',
     type: 'EAU DE PARFUM',
     price_2ml: 50000,
@@ -56,6 +59,7 @@ const mockProducts = [
     id: 'S-02',
     name: 'VANILLA STATIC',
     brand: 'Wangiin Signature',
+    classification: 'Niche',
     category: 'Sweet',
     type: 'EAU DE PARFUM',
     price_2ml: 55000,
@@ -73,6 +77,7 @@ const mockProducts = [
     id: 'F-07',
     name: 'GHOST JASMINE',
     brand: 'Wangiin Signature',
+    classification: 'Middle Eastern',
     category: 'Floral',
     type: 'EAU DE PARFUM',
     price_2ml: 50000,
@@ -89,7 +94,8 @@ const mockProducts = [
   {
     id: 'W-11',
     name: 'SANTAL GLITCH',
-    brand: 'Wangiin Signature',
+    brand: 'HMNS',
+    classification: 'Local',
     category: 'Woody',
     type: 'EXTRAIT DE PARFUM',
     price_2ml: 70000,
@@ -106,7 +112,8 @@ const mockProducts = [
   {
     id: 'R-05',
     name: 'SYNTHETIC ROSE',
-    brand: 'Wangiin Signature',
+    brand: 'Afnan',
+    classification: 'Middle Eastern',
     category: 'Floral',
     type: 'EAU DE PARFUM',
     price_2ml: 55000,
@@ -123,7 +130,8 @@ const mockProducts = [
   {
     id: 'M-08',
     name: 'OZONE LEATHER',
-    brand: 'Wangiin Signature',
+    brand: 'Mykonos',
+    classification: 'Local',
     category: 'Woody',
     type: 'EAU DE PARFUM',
     price_2ml: 60000,
@@ -143,18 +151,27 @@ export const productService = {
   /**
    * Fetch all products from Supabase
    */
-  async getProducts({ category = null, search = '', page = 1, limit = 6 } = {}) {
+  async getProducts({ category = null, brand = null, classification = null, search = '', page = 1, limit = 6 } = {}) {
     try {
       let query = supabase
         .from('products')
         .select(`
           *,
-          category:categories!inner(name),
+          brand:brands!inner(id, name, classification),
+          categories!inner(id, name),
           variants:product_variants(id, size, price, stock)
         `, { count: 'exact' })
 
       if (category && category !== 'All') {
-        query = query.eq('category.name', category)
+        query = query.eq('categories.name', category)
+      }
+
+      if (brand && brand !== 'All') {
+        query = query.eq('brand.name', brand)
+      }
+
+      if (classification && classification !== 'All') {
+        query = query.eq('brand.classification', classification)
       }
 
       if (search) {
@@ -174,7 +191,11 @@ export const productService = {
       const transformed = data.map(p => ({
         id: p.id,
         name: p.name,
-        category: p.category?.name || 'Uncategorized',
+        brand: p.brand?.name || 'Unknown Brand',
+        brand_id: p.brand?.id || null,
+        classification: p.brand?.classification || 'Local',
+        category: p.categories?.map(c => c.name).join(', ') || 'Uncategorized',
+        categoryList: p.categories?.map(c => c.name) || [],
         subtitle: p.subtitle,
         description: p.description,
         image_url: p.image_url,
@@ -213,7 +234,8 @@ export const productService = {
         .from('products')
         .select(`
           *,
-          category:categories(name),
+          brand:brands(id, name, classification),
+          categories(id, name),
           variants:product_variants(id, size, price, stock)
         `)
         .eq('id', id)
@@ -225,7 +247,11 @@ export const productService = {
       return {
         id: data.id,
         name: data.name,
-        category: data.category?.name || 'Uncategorized',
+        brand: data.brand?.name || 'Unknown Brand',
+        brand_id: data.brand?.id || null,
+        classification: data.brand?.classification || 'Local',
+        category: data.categories?.map(c => c.name).join(', ') || 'Uncategorized',
+        categoryList: data.categories?.map(c => c.name) || [],
         subtitle: data.subtitle,
         description: data.description,
         image_url: data.image_url,
@@ -265,17 +291,41 @@ export const productService = {
         }
       }
 
+      // Create brands
+      const brands = ['Wangiin Signature', 'HMNS', 'Afnan', 'Mykonos']
+      const brandMap = {}
+      
+      for (const b of brands) {
+        let { data } = await supabase.from('brands').select('id').eq('name', b).single()
+        if (!data) {
+          // Fallback classification logic for mock seed
+          let cls = 'Local'
+          if (b === 'Afnan') cls = 'Middle Eastern'
+          if (b === 'Wangiin Signature') cls = 'Niche'
+          
+          const { data: newBrand } = await supabase.from('brands').insert({ 
+            name: b, 
+            slug: b.toLowerCase().replace(/ /g, '-'),
+            classification: cls
+          }).select().single()
+          brandMap[b] = newBrand.id
+        } else {
+          brandMap[b] = data.id
+        }
+      }
+
       // 2. Insert Products and Variants
       for (const p of mockProducts) {
         const catId = catMap[p.category] || catMap['Woody']
+        const brandId = brandMap[p.brand] || brandMap['Wangiin Signature']
         
         const { data: existing } = await supabase.from('products').select('id').eq('slug', p.id.toLowerCase()).single()
         if (existing) continue // skip if already seeded
         
         const { data: newProduct, error: pErr } = await supabase.from('products').insert({
-          category_id: catId,
           name: p.name,
           slug: p.id.toLowerCase(),
+          brand_id: brandId,
           subtitle: p.notes,
           description: p.description,
           top_notes: p.top_notes,
@@ -288,6 +338,12 @@ export const productService = {
           console.error('Error inserting product', pErr)
           continue
         }
+
+        // Insert Many-to-Many Category relation
+        await supabase.from('product_categories').insert({
+          product_id: newProduct.id,
+          category_id: catId
+        })
 
         // Insert Variants
         await supabase.from('product_variants').insert([
@@ -307,7 +363,7 @@ export const productService = {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, is_new, subtitle, image_url, category:categories(name), variants:product_variants(size, price)')
+        .select('id, name, is_new, subtitle, image_url, brand:brands(name, classification), categories(name), variants:product_variants(size, price)')
         .limit(4) // Just get 4 items for featured
       
       if (error) throw error
@@ -315,7 +371,10 @@ export const productService = {
       return data.map(p => ({
         id: p.id,
         name: p.name,
-        category: p.category?.name,
+        brand: p.brand?.name || 'Unknown Brand',
+        classification: p.brand?.classification || 'Local',
+        category: p.categories?.map(c => c.name).join(', '),
+        categoryList: p.categories?.map(c => c.name) || [],
         subtitle: p.subtitle,
         image_url: p.image_url,
         isNew: p.is_new,
@@ -336,6 +395,16 @@ export const productService = {
       return ['All', ...data.map(c => c.name)]
     } catch (err) {
       return ['All', 'Woody', 'Fresh', 'Floral', 'Sweet']
+    }
+  },
+
+  async getBrands() {
+    try {
+      const { data, error } = await supabase.from('brands').select('name')
+      if (error) throw error
+      return ['All', ...data.map(b => b.name)]
+    } catch (err) {
+      return ['All']
     }
   }
 }

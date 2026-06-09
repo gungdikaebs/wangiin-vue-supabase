@@ -2,8 +2,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth'
-import { LayoutDashboard, Package, ShoppingCart, Users, LogOut, TrendingUp, Search, Menu, X } from 'lucide-vue-next'
+import { LayoutDashboard, Package, ShoppingCart, Users, LogOut, TrendingUp, Search, Menu, X, Tags, Bookmark } from 'lucide-vue-next'
 import ProductManagement from './ProductManagement.vue'
+import CategoryManagement from './CategoryManagement.vue'
+import BrandManagement from './BrandManagement.vue'
 import OrderManagement from './OrderManagement.vue'
 
 const router = useRouter()
@@ -66,6 +68,18 @@ const recentOrders = [
           :class="currentTab === 'products' ? 'bg-brand-secondary/10 text-brand-secondary border border-brand-secondary/20' : 'text-brand-interface-gray hover:text-brand-primary hover:bg-brand-primary/5'">
           <Package class="w-4 h-4" />
           Produk
+        </button>
+        <button @click="currentTab = 'brands'; isMobileMenuOpen = false"
+          class="flex items-center gap-4 px-4 py-3 font-mono text-xs uppercase tracking-widest transition-colors duration-300"
+          :class="currentTab === 'brands' ? 'bg-brand-secondary/10 text-brand-secondary border border-brand-secondary/20' : 'text-brand-interface-gray hover:text-brand-primary hover:bg-brand-primary/5'">
+          <Bookmark class="w-4 h-4" />
+          Brand
+        </button>
+        <button @click="currentTab = 'categories'; isMobileMenuOpen = false"
+          class="flex items-center gap-4 px-4 py-3 font-mono text-xs uppercase tracking-widest transition-colors duration-300"
+          :class="currentTab === 'categories' ? 'bg-brand-secondary/10 text-brand-secondary border border-brand-secondary/20' : 'text-brand-interface-gray hover:text-brand-primary hover:bg-brand-primary/5'">
+          <Tags class="w-4 h-4" />
+          Kategori
         </button>
         <button @click="currentTab = 'orders'; isMobileMenuOpen = false"
           class="flex items-center gap-4 px-4 py-3 font-mono text-xs uppercase tracking-widest transition-colors duration-300"
@@ -182,6 +196,16 @@ const recentOrders = [
       <!-- Product Management Tab -->
       <div v-else-if="currentTab === 'products'" class="h-full">
         <ProductManagement />
+      </div>
+
+      <!-- Category Management Tab -->
+      <div v-else-if="currentTab === 'categories'" class="h-full">
+        <CategoryManagement />
+      </div>
+
+      <!-- Brand Management Tab -->
+      <div v-else-if="currentTab === 'brands'" class="h-full">
+        <BrandManagement />
       </div>
 
       <!-- Order Management Tab -->

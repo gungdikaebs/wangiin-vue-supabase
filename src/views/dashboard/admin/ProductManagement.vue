@@ -11,6 +11,7 @@ const isSeeding = ref(false)
 const showModal = ref(false)
 const formLoading = ref(false)
 const categories = ref([])
+const brands = ref([])
 const selectedImage = ref(null)
 const imagePreview = ref(null)
 
@@ -21,7 +22,8 @@ const form = ref({
   name: '',
   subtitle: '',
   description: '',
-  category_id: '',
+  brand_id: null,
+  category_ids: [],
   image_url: '',
   top_notes: '',
   middle_notes: '',
@@ -47,9 +49,15 @@ const fetchCategories = async () => {
   if (data) categories.value = data
 }
 
+const fetchBrands = async () => {
+  const { data } = await supabase.from('brands').select('id, name')
+  if (data) brands.value = data
+}
+
 onMounted(() => {
   fetchProducts()
   fetchCategories()
+  fetchBrands()
 })
 
 const handleSeed = async () => {
@@ -62,13 +70,49 @@ const handleSeed = async () => {
   }
 }
 
+const addNewCategory = async () => {
+  const newCatName = prompt('Masukkan nama Kategori baru:')
+  if (newCatName && newCatName.trim() !== '') {
+    const slug = newCatName.trim().toLowerCase().replace(/ /g, '-')
+    try {
+      const { data, error } = await supabase.from('categories').insert({ name: newCatName.trim(), slug }).select().single()
+      if (error) throw error
+      await fetchCategories() // Refresh list category
+      if (data) {
+         if (!form.value.category_ids) form.value.category_ids = []
+         form.value.category_ids.push(data.id) // Auto select new category
+      }
+      alert('Kategori berhasil ditambahkan!')
+    } catch(e) {
+      alert('Gagal menambah kategori: ' + e.message)
+    }
+  }
+}
+
+const addNewBrand = async () => {
+  const newBrandName = prompt('Masukkan nama Brand baru:')
+  if (newBrandName && newBrandName.trim() !== '') {
+    const slug = newBrandName.trim().toLowerCase().replace(/ /g, '-')
+    try {
+      const { data, error } = await supabase.from('brands').insert({ name: newBrandName.trim(), slug }).select().single()
+      if (error) throw error
+      await fetchBrands()
+      if (data) form.value.brand_id = data.id
+      alert('Brand berhasil ditambahkan!')
+    } catch(e) {
+      alert('Gagal menambah brand: ' + e.message)
+    }
+  }
+}
+
 const openModal = () => {
   isEditMode.value = false
   editingProductId.value = null
   selectedImage.value = null
   imagePreview.value = null
   form.value = {
-    name: '', subtitle: '', description: '', category_id: categories.value[0]?.id || '',
+    name: '', subtitle: '', description: '', category_ids: [],
+    brand_id: null,
     image_url: '',
     top_notes: '', middle_notes: '', base_notes: '', is_new: false,
     price_2ml: 0, price_5ml: 0, price_10ml: 0,
@@ -81,7 +125,7 @@ const openEditModal = (p) => {
   isEditMode.value = true
   editingProductId.value = p.id
   
-  const cat = categories.value.find(c => c.name === p.category)
+  const pCatIds = p.categoryList ? categories.value.filter(c => p.categoryList.includes(c.name)).map(c => c.id) : []
   const v2 = p.variants?.find(v => v.size === '2 ML')
   const v5 = p.variants?.find(v => v.size === '5 ML')
   const v10 = p.variants?.find(v => v.size === '10 ML')
@@ -93,7 +137,8 @@ const openEditModal = (p) => {
     name: p.name,
     subtitle: p.subtitle || '',
     description: p.description || '',
-    category_id: cat ? cat.id : categories.value[0]?.id,
+    brand_id: p.brand_id || null,
+    category_ids: pCatIds,
     image_url: p.image_url || '',
     top_notes: p.notes?.top || '',
     middle_notes: p.notes?.middle || '',
@@ -148,7 +193,7 @@ const saveProduct = async () => {
     const productPayload = {
       name: form.value.name,
       slug: slug,
-      category_id: form.value.category_id,
+      brand_id: form.value.brand_id,
       image_url: finalImageUrl,
       subtitle: form.value.subtitle,
       description: form.value.description,
@@ -163,7 +208,14 @@ const saveProduct = async () => {
       const { error: pErr } = await supabase.from('products').update(productPayload).eq('id', editingProductId.value)
       if (pErr) throw pErr
 
-      // 2. Update Variants
+      // 2. Update Categories M2M
+      await supabase.from('product_categories').delete().eq('product_id', editingProductId.value)
+      if (form.value.category_ids && form.value.category_ids.length > 0) {
+        const catInserts = form.value.category_ids.map(cid => ({ product_id: editingProductId.value, category_id: cid }))
+        await supabase.from('product_categories').insert(catInserts)
+      }
+
+      // 3. Update Variants
       const updateVariant = async (id, size, price) => {
         if (id) {
           await supabase.from('product_variants').update({ price }).eq('id', id)
@@ -183,7 +235,13 @@ const saveProduct = async () => {
       const { data: newProd, error: pErr } = await supabase.from('products').insert(productPayload).select().single()
       if (pErr) throw pErr
 
-      // 2. Insert Variants
+      // 2. Insert Categories M2M
+      if (form.value.category_ids && form.value.category_ids.length > 0) {
+        const catInserts = form.value.category_ids.map(cid => ({ product_id: newProd.id, category_id: cid }))
+        await supabase.from('product_categories').insert(catInserts)
+      }
+
+      // 3. Insert Variants
       const { error: vErr } = await supabase.from('product_variants').insert([
         { product_id: newProd.id, size: '2 ML', price: form.value.price_2ml, stock: 100 },
         { product_id: newProd.id, size: '5 ML', price: form.value.price_5ml, stock: 100 },
@@ -256,6 +314,7 @@ const deleteProduct = async (product) => {
         <thead class="bg-brand-surface-lowest border-b border-brand-primary/10 font-mono text-[10px] tracking-widest uppercase text-brand-interface-gray">
           <tr>
             <th class="p-4 font-normal">Nama Parfum</th>
+            <th class="p-4 font-normal">Brand & Klasifikasi</th>
             <th class="p-4 font-normal">Kategori</th>
             <th class="p-4 font-normal">Status</th>
             <th class="p-4 font-normal text-right">Aksi</th>
@@ -263,12 +322,12 @@ const deleteProduct = async (product) => {
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="4" class="p-8 text-center text-brand-interface-gray font-mono text-xs uppercase tracking-widest">
+            <td colspan="5" class="p-8 text-center text-brand-interface-gray font-mono text-xs uppercase tracking-widest">
               Memuat data dari Supabase...
             </td>
           </tr>
           <tr v-else-if="products.length === 0">
-            <td colspan="4" class="p-8 text-center flex flex-col items-center justify-center">
+            <td colspan="5" class="p-8 text-center flex flex-col items-center justify-center">
               <Database class="w-8 h-8 text-brand-interface-gray opacity-50 mb-3" />
               <span class="text-brand-interface-gray font-mono text-[10px] uppercase tracking-widest">Database Kosong. Gunakan tombol Suntik Data.</span>
             </td>
@@ -285,6 +344,10 @@ const deleteProduct = async (product) => {
                   <div class="font-mono text-[9px] tracking-widest text-brand-interface-gray mt-1">{{ product.subtitle || 'No subtitle' }}</div>
                 </div>
               </div>
+            </td>
+            <td class="p-4">
+              <div class="font-display text-xs text-brand-primary uppercase">{{ product.brand }}</div>
+              <div class="font-mono text-[9px] tracking-widest text-brand-interface-gray uppercase mt-1">{{ product.classification }}</div>
             </td>
             <td class="p-4">
               <span class="px-2 py-1 bg-brand-primary/5 text-brand-primary text-[9px] font-mono tracking-widest uppercase border border-brand-primary/10">
@@ -335,10 +398,34 @@ const deleteProduct = async (product) => {
             </div>
 
             <div>
-              <label class="font-mono text-[10px] tracking-widest text-brand-interface-gray uppercase mb-2 block">Kategori</label>
-              <select required v-model="form.category_id" class="w-full bg-brand-deep-black border border-brand-primary/20 text-brand-on-surface font-body text-sm py-3 px-4 focus:outline-none focus:border-brand-secondary transition-colors appearance-none">
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+              <div class="flex justify-between items-center mb-2">
+                <label class="font-mono text-[10px] tracking-widest text-brand-interface-gray uppercase block">Brand</label>
+                <button type="button" @click="addNewBrand" class="font-mono text-[9px] tracking-widest text-brand-secondary uppercase hover:underline">
+                  + Tambah Brand
+                </button>
+              </div>
+              <select required v-model="form.brand_id" class="w-full bg-brand-deep-black border border-brand-primary/20 text-brand-on-surface font-body text-sm py-3 px-4 focus:outline-none focus:border-brand-secondary transition-colors appearance-none">
+                <option :value="null">Pilih Brand</option>
+                <option v-for="b in brands" :key="b.id" :value="b.id">{{ b.name }}</option>
               </select>
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label class="font-mono text-[10px] tracking-widest text-brand-interface-gray uppercase block">Kategori</label>
+                <button type="button" @click="addNewCategory" class="font-mono text-[9px] tracking-widest text-brand-secondary uppercase hover:underline">
+                  + Tambah Kategori
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-4 p-4 bg-brand-deep-black border border-brand-primary/20 min-h-[50px]">
+                <label v-for="cat in categories" :key="cat.id" class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" :value="cat.id" v-model="form.category_ids" class="w-4 h-4 accent-brand-secondary cursor-pointer" />
+                  <span class="font-mono text-xs tracking-widest text-brand-interface-gray uppercase">{{ cat.name }}</span>
+                </label>
+                <div v-if="categories.length === 0" class="text-brand-interface-gray font-mono text-[10px] uppercase w-full">
+                  Belum ada kategori tersedia.
+                </div>
+              </div>
             </div>
 
             <div>

@@ -16,11 +16,20 @@
 - `slug` (text, Unique) -> contoh: 'woody'
 - `created_at` (timestamp)
 
-## 3. public.products
+## 3. public.brands
+**Fungsi:** Menyimpan daftar merek parfum (contoh: HMNS, Afnan, Mykonos, Dior).
+
+- `id` (uuid, PK)
+- `name` (text, Unique)
+- `slug` (text, Unique)
+- `classification` (text) -> Pasar/Tipe (contoh: 'Local', 'Designer', 'Niche', 'Middle Eastern')
+- `created_at` (timestamp)
+
+## 4. public.products
 **Fungsi:** Menyimpan informasi dasar dari parfum (tanpa menyertakan harga atau ukuran decant).
 
 - `id` (uuid, PK)
-- `category_id` (uuid, FK) -> referensi ke `public.categories.id`
+- `brand_id` (uuid, FK, Nullable) -> referensi ke `public.brands.id`
 - `name` (text)
 - `slug` (text, Unique)
 - `subtitle` (text) -> Catatan singkat aroma
@@ -32,7 +41,13 @@
 - `image_url` (text) -> Menyimpan link gambar produk
 - `created_at` (timestamp)
 
-## 4. public.product_variants
+## 5. public.product_categories
+**Fungsi:** Tabel penghubung (*Junction Table*) untuk mencatat relasi banyak-ke-banyak (*Many-to-Many*) antara produk dan kategori.
+
+- `product_id` (uuid, PK, FK) -> referensi ke `public.products.id`
+- `category_id` (uuid, PK, FK) -> referensi ke `public.categories.id`
+
+## 6. public.product_variants
 **Fungsi:** Karena aplikasi ini berfokus pada "Decant" parfum, setiap produk dipecah harganya berdasarkan ukuran mililiter (ml).
 
 - `id` (uuid, PK)
@@ -42,7 +57,7 @@
 - `stock` (integer)
 - `created_at` (timestamp)
 
-## 5. public.orders
+## 7. public.orders
 **Fungsi:** Menyimpan detail transaksi (Checkout) baik untuk pengguna terdaftar maupun Guest Checkout.
 
 - `id` (uuid, PK)
@@ -61,7 +76,7 @@
 - `payment_method` (text) -> e.g. 'qris', 'bank_transfer'
 - `created_at` (timestamp)
 
-## 6. public.order_items
+## 8. public.order_items
 **Fungsi:** Menyimpan rincian keranjang belanja di dalam setiap pesanan.
 
 - `id` (uuid, PK)
@@ -78,11 +93,11 @@
 
 1. **Admin (`role = 'admin'`):** Memiliki hak akses penuh (INSERT, UPDATE, DELETE, SELECT) pada semua tabel.
 2. **Customer (`role = 'customer'`):** 
-   - Bisa membaca (SELECT) kategori, produk, dan varian.
+   - Bisa membaca (SELECT) kategori, merek (brand), produk, varian, dan relasi kategori.
    - Bisa membuat (INSERT) pesanan baru (`orders` & `order_items`).
    - Hanya bisa membaca (SELECT) `orders` dan `order_items` milik mereka sendiri (di mana `customer_id` cocok dengan akun mereka).
 3. **Guest (Belum Login):**
-   - Bisa membaca (SELECT) katalog produk.
+   - Bisa membaca (SELECT) katalog produk, kategori, dan merek (brand).
    - Bisa membuat (INSERT) pesanan baru.
 
 ---
@@ -100,11 +115,51 @@
 
 ## SQL Scripts (Untuk Setup di Supabase)
 
-Jika Anda perlu membuat atau mereset tabel pesanan, Anda bisa menjalankan *query* SQL berikut di menu **SQL Editor** Supabase Anda:
+Jika Anda perlu membuat atau mereset tabel baru, Anda bisa menjalankan *query* SQL berikut di menu **SQL Editor** Supabase Anda:
 
 ```sql
--- 1. Create orders table
-CREATE TABLE public.orders (
+-- 1. Buat tabel brands
+CREATE TABLE IF NOT EXISTS public.brands (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    slug TEXT NOT NULL UNIQUE,
+    classification TEXT DEFAULT 'Local',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Set up RLS untuk brands
+ALTER TABLE public.brands ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read brands" ON public.brands FOR SELECT USING (true);
+CREATE POLICY "Admin can do all on brands" ON public.brands FOR ALL USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
+-- 2. Tambahkan kolom brand_id ke tabel products (jika belum ada)
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS brand_id UUID REFERENCES public.brands(id) ON DELETE SET NULL;
+
+-- 3. Hapus kolom classification dari products (karena dipindah ke brands)
+ALTER TABLE public.products DROP COLUMN IF EXISTS classification;
+
+-- 4. Hapus kolom category_id dari products jika sudah ada
+ALTER TABLE public.products DROP COLUMN IF EXISTS category_id;
+
+-- 5. Buat tabel product_categories untuk Many-to-Many
+CREATE TABLE IF NOT EXISTS public.product_categories (
+    product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
+    category_id UUID REFERENCES public.categories(id) ON DELETE CASCADE,
+    PRIMARY KEY (product_id, category_id)
+);
+
+-- 6. Set up RLS untuk product_categories
+ALTER TABLE public.product_categories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read product_categories" ON public.product_categories FOR SELECT USING (true);
+CREATE POLICY "Admin can do all on product_categories" ON public.product_categories FOR ALL USING (
+  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
+-- 6. Create orders table
+CREATE TABLE IF NOT EXISTS public.orders (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     customer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     order_number TEXT UNIQUE NOT NULL,
@@ -122,8 +177,8 @@ CREATE TABLE public.orders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 2. Create order_items table
-CREATE TABLE public.order_items (
+-- 7. Create order_items table
+CREATE TABLE IF NOT EXISTS public.order_items (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
     product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
@@ -133,7 +188,7 @@ CREATE TABLE public.order_items (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 3. Set up Row Level Security (RLS) for orders and order_items
+-- 8. Set up RLS untuk orders and order_items
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 
