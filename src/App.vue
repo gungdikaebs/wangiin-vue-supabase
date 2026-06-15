@@ -14,6 +14,9 @@ const isAdminDashboard = computed(() => {
   return route.path.startsWith('/dashboard') && authStore.role === 'admin'
 })
 
+const isQuizPage = computed(() => route.path === '/quiz')
+const showLayout = computed(() => !isAdminDashboard.value && !isQuizPage.value)
+
 onMounted(async () => {
   await authStore.checkSession()
 
@@ -34,12 +37,12 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen bg-brand-deep-black text-brand-on-background font-body flex flex-col">
-    <Navbar v-if="!isAdminDashboard" />
-    <main class="flex-grow" :class="{ 'pt-20': !isAdminDashboard }"> <!-- pt-20 to account for fixed navbar -->
+    <Navbar v-if="showLayout" />
+    <main class="flex-grow" :class="{ 'pt-20': showLayout }"> <!-- pt-20 to account for fixed navbar -->
       <router-view />
     </main>
-    <Footer v-if="!isAdminDashboard" />
-    <CartDrawer />
+    <Footer v-if="showLayout" />
+    <CartDrawer v-if="!isQuizPage" />
   </div>
 </template>
 

@@ -94,16 +94,16 @@ onMounted(() => {
 
         <!-- Editorial CTA Buttons -->
         <div ref="heroCta" class="flex flex-col sm:flex-row gap-6 items-start pl-0 lg:pl-24">
-          <button
+          <router-link to="/collection"
             class="inline-flex items-center justify-center gap-4 font-mono text-[10px] md:text-xs font-medium uppercase tracking-[0.2em] px-8 py-5 bg-brand-primary text-brand-on-primary hover:bg-brand-secondary hover:text-brand-on-secondary transition-colors duration-500 cursor-pointer group">
             Lihat Koleksi
             <ArrowRight class="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+          </router-link>
 
-          <button
+          <router-link to="/quiz"
             class="inline-flex items-center justify-center font-mono text-[10px] md:text-xs font-medium uppercase tracking-[0.2em] px-8 py-5 bg-transparent text-brand-primary border border-brand-primary/30 hover:border-brand-secondary hover:text-brand-secondary transition-colors duration-500 cursor-pointer">
             Temukan Wangimu
-          </button>
+          </router-link>
         </div>
 
       </div>

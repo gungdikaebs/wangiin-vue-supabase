@@ -26,7 +26,7 @@ const handleLogout = async () => {
     <div class="max-w-7xl mx-auto px-6 md:px-8 flex justify-between items-center h-20">
       
       <!-- Logo -->
-      <router-link to="/" class="font-mono text-xs md:text-sm font-semibold tracking-[0.15em] uppercase text-brand-primary hover:text-brand-secondary transition-colors duration-200">
+      <router-link to="/" class="font-editorial text-xl md:text-2xl tracking-[0.2em] uppercase text-brand-primary hover:text-brand-secondary transition-colors duration-200">
         Wangiin
       </router-link>
 
